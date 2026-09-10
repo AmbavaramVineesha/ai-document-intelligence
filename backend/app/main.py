@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from backend.app.core.config import settings
 from backend.app.core.database import engine, Base
 from backend.app.api.routes import health, documents
@@ -32,6 +33,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/", include_in_schema=False)
+def root_redirect():
+    """Redirect root path to interactive API documentation (/docs)."""
+    return RedirectResponse(url="/docs")
+
 # Include API Routers
 app.include_router(health.router, prefix=settings.API_V1_STR)
 app.include_router(documents.router, prefix=settings.API_V1_STR)
+
