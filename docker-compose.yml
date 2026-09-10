@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  docintel-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - DATABASE_URL=sqlite:///./document_intelligence.db
+    volumes:
+      - ./data:/app/data
+    restart: always

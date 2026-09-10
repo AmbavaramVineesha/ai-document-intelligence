@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Extraction Result - {{ document_name }}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <div class="logo">
+      <i class="fa-solid fa-brain-circuit"></i>
+      <span>DocIntel AI Platform</span>
+    </div>
+    <div class="nav-links">
+      <a href="/"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
+      <a href="/api/v1/documents/{{ document_name }}" target="_blank"><i class="fa-solid fa-code"></i> Raw API Response</a>
+    </div>
+  </header>
+
+  <div class="container">
+
+    {% if not document_found %}
+    <div class="glass-card" style="text-align: center; padding: 4rem 2rem;">
+      <i class="fa-solid fa-file-circle-xmark" style="font-size: 4rem; color: var(--fail-red); margin-bottom: 1rem;"></i>
+      <h2 style="font-size: 1.8rem;">Document Not Found</h2>
+      <p style="color: var(--text-muted); margin-top: 0.5rem;">No record found for "{{ document_name }}".</p>
+      <a href="/" class="btn-secondary" style="display: inline-block; margin-top: 1.5rem;">Return to Dashboard</a>
+    </div>
+    {% else %}
+
+    <!-- Top Summary Card -->
+    <div class="glass-card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h1 style="font-family: 'Outfit'; font-size: 1.8rem; display: flex; align-items: center; gap: 0.75rem;">
+            <i class="fa-solid fa-file-contract" style="color: var(--accent-cyan);"></i>
+            {{ data.document_name }}
+          </h1>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
+            Category: <strong style="color: #fff; text-transform: uppercase;">{{ data.document_type }}</strong> &nbsp;|&nbsp; 
+            Processed at: {{ data.processing_metadata.processed_at }} ({{ data.processing_metadata.processing_time_ms }} ms)
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+          {% if data.processing_status == "PASS" %}
+          <span class="badge badge-pass" style="font-size: 1rem; padding: 0.5rem 1rem;"><i class="fa-solid fa-circle-check"></i> OVERALL PASS</span>
+          {% else %}
+          <span class="badge badge-fail" style="font-size: 1rem; padding: 0.5rem 1rem;"><i class="fa-solid fa-circle-xmark"></i> OVERALL FAILED</span>
+          {% endif %}
+
+          {% if data.overall_confidence %}
+          <div style="background: rgba(6, 182, 212, 0.15); border: 1px solid var(--accent-cyan); padding: 0.4rem 0.8rem; border-radius: 0.5rem; font-weight: 700; color: var(--accent-cyan); font-size: 0.9rem;">
+            Confidence: {{ (data.overall_confidence * 100) | round(0) }}%
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- File Validation Pill Box -->
+      <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 0.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap;">
+        <div><strong>File Type:</strong> {{ data.file_validation.file_type }}</div>
+        <div><strong>Supported:</strong> {{ "Yes" if data.file_validation.is_supported else "No" }}</div>
+        <div><strong>Readable:</strong> {{ "Yes" if data.file_validation.is_readable else "No" }}</div>
+        <div><strong>Page Count:</strong> {{ data.file_validation.page_count }} / 3 pages</div>
+        <div><strong>Input Validation Status:</strong> 
+          {% if data.file_validation.status == "PASS" %}
+          <span class="badge badge-pass">PASS</span>
+          {% else %}
+          <span class="badge badge-fail">FAILED</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Financial Validation Checks Section -->
+    <div class="glass-card">
+      <div class="card-title">
+        <i class="fa-solid fa-calculator" style="color: var(--accent-purple);"></i>
+        Financial Calculation Validation Checks
+      </div>
+
+      {% if data.validation.checks and data.validation.checks | length > 0 %}
+      <div style="overflow-x: auto;">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Check Name</th>
+              <th>Formula</th>
+              <th>Calculated Value</th>
+              <th>Reported Value</th>
+              <th>Variance</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for check in data.validation.checks %}
+            <tr>
+              <td>
+                <strong>{{ check.name }}</strong>
+                {% if check.details %}<br><small style="color: var(--text-muted);">{{ check.details }}</small>{% endif %}
+              </td>
+              <td><code>{{ check.formula }}</code></td>
+              <td>{{ check.calculated_value if check.calculated_value is not none else "N/A" }}</td>
+              <td>{{ check.reported_value if check.reported_value is not none else "N/A" }}</td>
+              <td>{{ check.variance if check.variance is not none else "N/A" }}</td>
+              <td>
+                {% if check.status == "PASS" %}
+                <span class="badge badge-pass"><i class="fa-solid fa-check"></i> PASS</span>
+                {% elif check.status == "FAIL" %}
+                <span class="badge badge-fail"><i class="fa-solid fa-xmark"></i> FAIL</span>
+                {% else %}
+                <span class="badge badge-na">N/A</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="color: var(--text-muted);">No financial validation rules executed for this document.</p>
+      {% endif %}
+
+      {% if data.validation.issues and data.validation.issues | length > 0 %}
+      <div style="margin-top: 1rem; padding: 1rem; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--fail-red); border-radius: 0.5rem; color: #fca5a5;">
+        <strong>Validation Issues Identified:</strong>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+          {% for issue in data.validation.issues %}
+          <li>{{ issue }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Extracted Key-Value Fields -->
+    <div class="glass-card">
+      <div class="card-title">
+        <i class="fa-solid fa-key" style="color: var(--accent-cyan);"></i>
+        Extracted Key-Value Fields & Grounding Evidence
+      </div>
+
+      <div class="kv-grid">
+        {% for key, field in data.extracted_data.items() %}
+          {% if key not in ["line_items", "statement_line_items"] %}
+          <div class="kv-item">
+            <div class="kv-label">{{ key | replace('_', ' ') }}</div>
+            <div class="kv-value">
+              {% if field is mapping and field.value is not none %}
+                {{ field.value }}
+              {% elif field is mapping and field.value is none %}
+                <span style="color: var(--text-muted); font-style: italic;">null</span>
+              {% else %}
+                {{ field }}
+              {% endif %}
+            </div>
+
+            {% if field is mapping and field.evidence and field.evidence.source_text %}
+            <div class="kv-meta">
+              <i class="fa-solid fa-quote-left"></i> "{{ field.evidence.source_text }}" (Page {{ field.evidence.page_number or 1 }})
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Tables / Line Items Section -->
+    {% if data.extracted_data.line_items %}
+    <div class="glass-card">
+      <div class="card-title">
+        <i class="fa-solid fa-table-list" style="color: var(--accent-purple);"></i>
+        Invoice Line Items Table
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Quantity</th>
+              <th>Unit Price</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in data.extracted_data.line_items %}
+            <tr>
+              <td>{{ item.description }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.unit_price }}</td>
+              <td><strong>{{ item.amount }}</strong></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if data.extracted_data.statement_line_items %}
+    <div class="glass-card">
+      <div class="card-title">
+        <i class="fa-solid fa-table-cells" style="color: var(--accent-cyan);"></i>
+        Financial Statement Line Items Table
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Line Item Description</th>
+              <th>Current Period Value</th>
+              <th>Previous Period Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in data.extracted_data.statement_line_items %}
+            <tr>
+              <td>{{ item.description }}</td>
+              <td><strong>{{ item.current_period_value if item.current_period_value is not none else "-" }}</strong></td>
+              <td>{{ item.previous_period_value if item.previous_period_value is not none else "-" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Raw Structured JSON View -->
+    <div class="glass-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div class="card-title" style="margin-bottom: 0;">
+          <i class="fa-solid fa-code-json" style="color: var(--accent-cyan);"></i>
+          Raw Structured JSON Output
+        </div>
+        <button id="copyJsonBtn" class="btn-secondary">
+          <i class="fa-solid fa-copy"></i> Copy JSON
+        </button>
+      </div>
+      <pre class="json-view" id="jsonBlock">{{ data | tojson(indent=2) }}</pre>
+    </div>
+
+    {% endif %}
+
+  </div>
+
+  <script>
+    document.getElementById('copyJsonBtn')?.addEventListener('click', function() {
+      const jsonText = document.getElementById('jsonBlock').innerText;
+      navigator.clipboard.writeText(jsonText).then(() => {
+        alert('JSON copied to clipboard!');
+      });
+    });
+  </script>
+</body>
+</html>

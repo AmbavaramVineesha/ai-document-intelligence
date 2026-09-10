@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: docintel-platform
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: DATABASE_URL
+        value: sqlite:///./document_intelligence.db
