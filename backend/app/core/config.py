@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     # Persistence
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./document_intelligence.db")
     
+    # Frontend URL for CORS (set to the Vercel frontend URL on deployment)
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "")
+    
     # Validation Limits
     MAX_FILE_SIZE_MB: int = 15
     MAX_PAGE_COUNT: int = 3
@@ -34,3 +37,4 @@ class Settings(BaseSettings):
         case_sensitive = True
 
 settings = Settings()
+

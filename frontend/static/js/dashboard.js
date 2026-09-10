@@ -1,4 +1,16 @@
+/**
+ * DocIntel AI Platform — Dashboard Page Logic
+ * Uses CONFIG.API_BASE_URL (defined in config.js) for all API calls.
+ */
 document.addEventListener('DOMContentLoaded', () => {
+  const API = CONFIG.API_BASE_URL;
+
+  // Update nav links dynamically to point at the correct backend
+  const apiDocsLink = document.getElementById('apiDocsLink');
+  const healthLink = document.getElementById('healthLink');
+  if (apiDocsLink) apiDocsLink.href = `${API}/docs`;
+  if (healthLink) healthLink.href = `${API}/api/v1/health`;
+
   const uploadForm = document.getElementById('uploadForm');
   const fileInput = document.getElementById('fileInput');
   const dropzone = document.getElementById('dropzone');
@@ -8,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const refreshBtn = document.getElementById('refreshBtn');
   const documentsTableBody = document.getElementById('documentsTableBody');
 
-  // Drag & drop behavior
+  // ── Drag & drop ──────────────────────────────────────────────────────────
   dropzone.addEventListener('click', () => fileInput.click());
 
   ['dragenter', 'dragover'].forEach(eventName => {
@@ -26,8 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   dropzone.addEventListener('drop', (e) => {
-    const dt = e.dataTransfer;
-    const files = dt.files;
+    const files = e.dataTransfer.files;
     if (files.length > 0) {
       fileInput.files = files;
       showSelectedFile(files[0]);
@@ -35,24 +46,23 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   fileInput.addEventListener('change', () => {
-    if (fileInput.files.length > 0) {
-      showSelectedFile(fileInput.files[0]);
-    }
+    if (fileInput.files.length > 0) showSelectedFile(fileInput.files[0]);
   });
 
   function showSelectedFile(file) {
     selectedFileName.innerHTML = `<i class="fa-solid fa-file"></i> Selected: <strong>${file.name}</strong> (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
   }
 
-  // Load documents list
+  // ── Load documents list ───────────────────────────────────────────────────
   async function loadDocuments() {
     try {
-      const response = await fetch('/api/v1/documents');
+      const response = await fetch(`${API}/api/v1/documents`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       renderTable(data.documents || []);
     } catch (err) {
       console.error('Failed to load documents list:', err);
-      documentsTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--fail-red);">Error loading documents list.</td></tr>`;
+      documentsTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--fail-red);">Error loading documents list. Is the backend running at <code>${API}</code>?</td></tr>`;
     }
   }
 
@@ -63,24 +73,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     documentsTableBody.innerHTML = documents.map(doc => {
-      const statusBadge = doc.processing_status === 'PASS' 
+      const statusBadge = doc.processing_status === 'PASS'
         ? `<span class="badge badge-pass"><i class="fa-solid fa-check"></i> PASS</span>`
         : `<span class="badge badge-fail"><i class="fa-solid fa-xmark"></i> FAILED</span>`;
-      
+
       const confStr = doc.overall_confidence ? `${Math.round(doc.overall_confidence * 100)}%` : 'N/A';
       const formattedDate = new Date(doc.processed_at).toLocaleString();
 
       return `
         <tr>
-          <td>
-            <strong>${doc.document_name}</strong>
-          </td>
+          <td><strong>${doc.document_name}</strong></td>
           <td><span style="text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.05em; color: var(--accent-cyan);">${doc.document_type}</span></td>
           <td>${statusBadge}</td>
           <td>${confStr}</td>
           <td><small style="color: var(--text-muted);">${formattedDate}</small></td>
           <td>
-            <a href="/view/${encodeURIComponent(doc.document_name)}" class="btn-secondary" style="padding: 0.35rem 0.75rem;">
+            <a href="document_result.html?name=${encodeURIComponent(doc.document_name)}" class="btn-secondary" style="padding: 0.35rem 0.75rem;">
               <i class="fa-solid fa-eye"></i> View Result
             </a>
           </td>
@@ -89,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }).join('');
   }
 
-  // Handle Form Submission
+  // ── Form submission ───────────────────────────────────────────────────────
   uploadForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -99,19 +107,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const formData = new FormData(uploadForm);
-    
-    // UI Processing state
+
     processBtn.disabled = true;
     processBtn.innerHTML = `<div class="spinner"></div> Processing Document...`;
     statusAlert.style.display = 'none';
     showAlert('⏳ Uploading and processing your document. This may take up to 60 seconds on first request...', 'info');
 
-    // Abort controller — 120 second timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 120000);
 
     try {
-      const response = await fetch('/api/v1/documents/process', {
+      const response = await fetch(`${API}/api/v1/documents/process`, {
         method: 'POST',
         body: formData,
         signal: controller.signal
@@ -124,13 +130,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.processing_status === 'PASS') {
           showAlert(`✅ Document processed successfully! Status: PASS. Redirecting to result...`, 'pass');
         } else {
-          showAlert(`⚠️ Document processed. Status: FAILED. Check file validation / calculations. Redirecting to result...`, 'fail');
+          showAlert(`⚠️ Document processed. Status: FAILED. Check file validation / calculations. Redirecting...`, 'fail');
         }
-        
-        // Refresh table and redirect after 1.5 seconds
+
         loadDocuments();
         setTimeout(() => {
-          window.location.href = `/view/${encodeURIComponent(result.document_name)}`;
+          window.location.href = `document_result.html?name=${encodeURIComponent(result.document_name)}`;
         }, 1500);
 
       } else {
@@ -152,6 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ── Alert helper ──────────────────────────────────────────────────────────
   function showAlert(msg, type) {
     statusAlert.style.display = 'block';
     if (type === 'pass') {
@@ -171,7 +177,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   refreshBtn.addEventListener('click', loadDocuments);
-
-  // Initial load
   loadDocuments();
 });

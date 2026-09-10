@@ -1,13 +1,8 @@
-import os
-from fastapi import FastAPI, Request, Depends
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
 from backend.app.core.config import settings
-from backend.app.core.database import engine, Base, get_db
+from backend.app.core.database import engine, Base
 from backend.app.api.routes import health, documents
-from backend.app.repositories.document_repository import DocumentRepository
 
 # Create Database tables on startup
 Base.metadata.create_all(bind=engine)
@@ -20,43 +15,23 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Enable CORS
+# Build allowed origins list from config
+allowed_origins = ["*"] if not settings.FRONTEND_URL else [
+    settings.FRONTEND_URL,
+    "http://localhost:3000",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
+]
+
+# Enable CORS — allow configured frontend URL + local dev origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Paths for static and templates
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-STATIC_DIR = os.path.join(BASE_DIR, "frontend", "static")
-TEMPLATES_DIR = os.path.join(BASE_DIR, "frontend", "templates")
-
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
-
 # Include API Routers
 app.include_router(health.router, prefix=settings.API_V1_STR)
 app.include_router(documents.router, prefix=settings.API_V1_STR)
-
-# Frontend Routes
-@app.get("/", tags=["Frontend Dashboard"])
-def render_dashboard(request: Request):
-    return templates.TemplateResponse(request=request, name="dashboard.html", context={})
-
-@app.get("/view/{document_name}", tags=["Frontend Dashboard"])
-def render_document_result(document_name: str, request: Request, db: Session = Depends(get_db)):
-    repo = DocumentRepository(db)
-    record = repo.get_by_document_name(document_name)
-    payload = record.payload_json if record else None
-    return templates.TemplateResponse(
-        request=request,
-        name="document_result.html",
-        context={
-            "document_name": document_name,
-            "document_found": record is not None,
-            "data": payload
-        }
-    )
