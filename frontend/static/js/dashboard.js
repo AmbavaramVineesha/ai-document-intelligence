@@ -104,20 +104,27 @@ document.addEventListener('DOMContentLoaded', () => {
     processBtn.disabled = true;
     processBtn.innerHTML = `<div class="spinner"></div> Processing Document...`;
     statusAlert.style.display = 'none';
+    showAlert('⏳ Uploading and processing your document. This may take up to 60 seconds on first request...', 'info');
+
+    // Abort controller — 120 second timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
 
     try {
       const response = await fetch('/api/v1/documents/process', {
         method: 'POST',
-        body: formData
+        body: formData,
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
       const result = await response.json();
 
       if (response.ok) {
         if (result.processing_status === 'PASS') {
-          showAlert(`Document processed successfully! Status: PASS. Redirecting to result...`, 'pass');
+          showAlert(`✅ Document processed successfully! Status: PASS. Redirecting to result...`, 'pass');
         } else {
-          showAlert(`Document processed. Status: FAILED. Check file validation / calculations. Redirecting to result...`, 'fail');
+          showAlert(`⚠️ Document processed. Status: FAILED. Check file validation / calculations. Redirecting to result...`, 'fail');
         }
         
         // Refresh table and redirect after 1.5 seconds
@@ -132,8 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
     } catch (err) {
+      clearTimeout(timeoutId);
       console.error('Error submitting form:', err);
-      showAlert(`Network or server error: ${err.message}`, 'fail');
+      if (err.name === 'AbortError') {
+        showAlert(`⏰ Request timed out (>120s). The server may be under heavy load. Please try again.`, 'fail');
+      } else {
+        showAlert(`Network or server error: ${err.message}`, 'fail');
+      }
     } finally {
       processBtn.disabled = false;
       processBtn.innerHTML = `<i class="fa-solid fa-bolt"></i> Process Document`;
@@ -146,6 +158,10 @@ document.addEventListener('DOMContentLoaded', () => {
       statusAlert.style.background = 'rgba(16, 185, 129, 0.15)';
       statusAlert.style.border = '1px solid var(--pass-green)';
       statusAlert.style.color = '#6ee7b7';
+    } else if (type === 'info') {
+      statusAlert.style.background = 'rgba(6, 182, 212, 0.10)';
+      statusAlert.style.border = '1px solid var(--accent-cyan)';
+      statusAlert.style.color = '#67e8f9';
     } else {
       statusAlert.style.background = 'rgba(239, 68, 68, 0.15)';
       statusAlert.style.border = '1px solid var(--fail-red)';
