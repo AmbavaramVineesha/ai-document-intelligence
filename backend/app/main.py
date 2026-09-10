@@ -44,7 +44,7 @@ app.include_router(documents.router, prefix=settings.API_V1_STR)
 # Frontend Routes
 @app.get("/", tags=["Frontend Dashboard"])
 def render_dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="dashboard.html", context={})
 
 @app.get("/view/{document_name}", tags=["Frontend Dashboard"])
 def render_document_result(document_name: str, request: Request, db: Session = Depends(get_db)):
@@ -52,9 +52,9 @@ def render_document_result(document_name: str, request: Request, db: Session = D
     record = repo.get_by_document_name(document_name)
     payload = record.payload_json if record else None
     return templates.TemplateResponse(
-        "document_result.html",
-        {
-            "request": request,
+        request=request,
+        name="document_result.html",
+        context={
             "document_name": document_name,
             "document_found": record is not None,
             "data": payload
