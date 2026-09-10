@@ -16,19 +16,11 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Build allowed origins list from config
-allowed_origins = ["*"] if not settings.FRONTEND_URL else [
-    settings.FRONTEND_URL,
-    "http://localhost:3000",
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
-]
-
-# Enable CORS — allow configured frontend URL + local dev origins
+# Enable CORS — allow all origins so frontend on Vercel/Netlify/localhost never gets blocked
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
