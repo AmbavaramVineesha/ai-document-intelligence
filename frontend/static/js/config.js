@@ -9,5 +9,5 @@ const CONFIG = {
   // ─── Backend URL ──────────────────────────────────────────────────────────
   API_BASE_URL: window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:8000"
-    : "https://docintel-api-b8ms.onrender.com",
+    : "https://ai-document-intelligence-bqse.onrender.com",
 };
